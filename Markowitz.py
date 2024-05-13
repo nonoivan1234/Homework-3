@@ -66,7 +66,7 @@ class EqualWeightPortfolio:
         """
         TODO: Complete Task 1 Below
         """
-
+        self.portfolio_weights.loc[:, assets] = 1 / len(assets)
         """
         TODO: Complete Task 1 Above
         """
@@ -117,7 +117,16 @@ class RiskParityPortfolio:
         """
         TODO: Complete Task 2 Below
         """
+        for i in range(self.lookback + 1, len(df)):
+            # Calculate the volatility of each asset
+            volatilities = df_returns[assets].iloc[i - self.lookback : i].std()
+            
+            # Calculate the inverse volatility weights
+            inverse_volatilities = 1 / volatilities
+            weights = inverse_volatilities / np.sum(inverse_volatilities)
 
+            # Assign the weights to the corresponding assets in the portfolio_weights DataFrame
+            self.portfolio_weights.loc[self.portfolio_weights.index[i], assets] = weights
         """
         TODO: Complete Task 2 Above
         """
@@ -189,12 +198,26 @@ class MeanVariancePortfolio:
                 """
                 TODO: Complete Task 3 Below
                 """
-
-                # Sample Code: Initialize Decision w and the Objective
-                # NOTE: You can modify the following code
-                w = model.addMVar(n, name="w", ub=1)
-                model.setObjective(w.sum(), gp.GRB.MAXIMIZE)
-
+                
+                # the vector of portfolio weights for each asset.
+                w = model.addMVar(n, lb=0.0, ub=1.0, name="w")
+                
+                # the risk aversion coefficient, which modulates the trade-off between return and risk.
+                gamma = self.gamma
+                
+                # Set the objective function
+                # no leverage constraint
+                model.addConstr(w.sum() == 1)
+                
+                # long-only constraint
+                model.addConstrs(w[i] >= 0 for i in range(n))
+                
+                model.setObjective(
+                    w.T @ mu - gamma / 2 * (w.T @ Sigma @ w),
+                    sense=gp.GRB.MAXIMIZE
+                )
+                
+                
                 """
                 TODO: Complete Task 3 Below
                 """
